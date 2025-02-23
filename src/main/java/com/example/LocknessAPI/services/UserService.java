@@ -4,6 +4,8 @@ import com.example.LocknessAPI.models.User;
 import com.example.LocknessAPI.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.Random;
 
 @Service
 public class UserService {
@@ -17,6 +19,9 @@ public class UserService {
 
     // Create a new user
     public User createUser(User user) {
+        if (user.getReferralCode() == null || user.getReferralCode().isEmpty()) {
+            user.setReferralCode(generateUniqueReferralCode());
+        }
         return usersRepository.save(user);
     }
 
@@ -30,10 +35,10 @@ public class UserService {
 //        return userRepository.findByEmail(email);
 //    }
 //
-//    // Get all users
-//    public List<User> getAllUsers() {
-//        return userRepository.findAll();
-//    }
+    // Get all users
+    public List<User> getAllUsers() {
+        return usersRepository.findAll();
+    }
 //
 //    // Update user information
 //    public User updateUser(String id, User updatedUser) {
@@ -54,4 +59,21 @@ public class UserService {
 //            return false;
 //        }
 //    }
+    private String generateUniqueReferralCode() {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        Random random = new Random();
+        String code;
+
+        // Lặp cho đến khi tìm được một mã không trùng
+        do {
+            StringBuilder codeBuilder = new StringBuilder();
+            for (int i = 0; i < 6; i++) { // Referral code dài 6 ký tự
+                codeBuilder.append(characters.charAt(random.nextInt(characters.length())));
+            }
+            code = codeBuilder.toString();
+        } while (usersRepository.existsByReferralCode(code)); // Kiểm tra trùng lặp
+
+        return code;
+    }
+
 }
