@@ -18,7 +18,7 @@ import java.util.UUID;
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class AuthController {
 
-    // EIP-4361 string
+    // **TEST DATA** EIP-4361 string
     public static final String MESSAGE = "example.com wants you to sign in with your Ethereum account:\n" +
             "0xAd472fbB6781BbBDfC4Efea378ed428083541748\n\n" +
             "Sign in to use the app.\n\n" +
@@ -28,15 +28,13 @@ public class AuthController {
             "Nonce: EnZ3CLrm6ap78uiNE0MU\n" +
             "Issued At: 2022-06-17T22:29:40.065529400+02:00";
 
-    // Matching signature
+    // **TEST DATA** Matching signature
     public static final String SIGNATURE = "0x2ce1f57908b3d1cfece352a90cec9beab0452829a0bf741d26016d60676d" +
             "63807b5080b4cc387edbe741203387ef0b8a6e79743f636512cc48c80cbb12ffa8261b";
 
-
     @GetMapping("/nonce")
     public ResponseEntity<String> generateNonce(HttpSession session) {
-//        String nonce = UUID.randomUUID().toString(); // Tạo nonce ngẫu nhiên
-        String nonce = "EnZ3CLrm6ap78uiNE0MU";
+        String nonce = UUID.randomUUID().toString(); // Tạo nonce ngẫu nhiên
         session.setAttribute("nonce", nonce); // Lưu nonce vào session
         return ResponseEntity.ok(nonce);
     }
@@ -50,10 +48,10 @@ public class AuthController {
             }
 
             // Parse SIWE message
-            SiweMessage siweMessage = new SiweMessage.Parser().parse(MESSAGE);
+            SiweMessage siweMessage = new SiweMessage.Parser().parse(request.getMessage());
 
             // Verify signature
-            siweMessage.verify(siweMessage.getDomain(), storedNonce, SIGNATURE);
+            siweMessage.verify(siweMessage.getDomain(), storedNonce, request.getSignature());
 
             // Save session info
             session.setAttribute("siwe", siweMessage.getAddress());
