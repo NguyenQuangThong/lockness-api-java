@@ -1,5 +1,6 @@
 package com.example.LocknessAPI.services;
 
+import com.example.LocknessAPI.commons.EntityStatus;
 import com.example.LocknessAPI.models.Task;
 import com.example.LocknessAPI.models.TaskAssignment;
 import com.example.LocknessAPI.models.User;
@@ -32,7 +33,7 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
-        Optional<Worker> optionalWorker = workerRepository.findFirstByStatus("idle");
+        Optional<Worker> optionalWorker = workerRepository.findFirstByStatus(EntityStatus.IDLE.getCode());
         if (optionalWorker.isEmpty()) {
             throw new RuntimeException("No available workers");
         }
@@ -45,7 +46,7 @@ public class TaskService {
                 .build();
         taskAssignmentRepository.save(taskAssignment);
 
-        worker.setStatus("busy");
+        worker.setStatus(EntityStatus.BUSY.getCode());
         worker.setUpdatedAt(LocalDateTime.now());
         workerRepository.save(worker);
 
@@ -65,7 +66,7 @@ public class TaskService {
     }
 
     public Optional<Worker> getIdleWorker() {
-        return workerRepository.findFirstByStatus("idle");
+        return workerRepository.findFirstByStatus(EntityStatus.IDLE.getCode());
     }
 
     public Optional<Worker> getIdleWorkerWithLock() {

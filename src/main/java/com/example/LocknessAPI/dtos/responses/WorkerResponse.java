@@ -1,14 +1,13 @@
 package com.example.LocknessAPI.dtos.responses;
 
+import com.example.LocknessAPI.models.Worker;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 
-import java.time.LocalDateTime;
-
 @Data
-@AllArgsConstructor
+@Builder
 public class WorkerResponse {
-    private String id;
-    private Integer points;
-    private LocalDateTime lastClaimAt;
+    private Worker data;
+    private Boolean success;
 }

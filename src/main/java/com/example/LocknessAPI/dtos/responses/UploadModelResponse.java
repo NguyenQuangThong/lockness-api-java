@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class UploadPromptResponse {
+public class UploadModelResponse {
     private String message;
     private Boolean status;
 }

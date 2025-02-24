@@ -12,18 +12,18 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-@Document(collection = "prompts")
+@Document(collection = "models")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Prompt {
+public class Model {
 
     @Id
     private String id;
 
-    private String text;
-    private String status;
+    private String prompt;
+    private byte status;
     private String modelUrl;
     private String thumbnailUrl;
     private String userId;

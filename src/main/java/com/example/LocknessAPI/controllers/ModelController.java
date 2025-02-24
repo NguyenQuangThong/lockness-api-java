@@ -1,10 +1,12 @@
 package com.example.LocknessAPI.controllers;
 
-import com.example.LocknessAPI.dtos.responses.UploadPromptResponse;
-import com.example.LocknessAPI.models.Prompt;
+import com.example.LocknessAPI.commons.EntityStatus;
+import com.example.LocknessAPI.commons.MessageDefine;
+import com.example.LocknessAPI.dtos.responses.UploadModelResponse;
+import com.example.LocknessAPI.models.Model;
 import com.example.LocknessAPI.models.User;
-import com.example.LocknessAPI.repositories.PromptRepository;
-import com.example.LocknessAPI.services.PromptService;
+import com.example.LocknessAPI.repositories.ModelRepository;
+import com.example.LocknessAPI.services.ModelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,101 +23,101 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @RestController
-@RequestMapping("/prompts")
+@RequestMapping("/models")
 @RequiredArgsConstructor
-public class PromptController {
+public class ModelController {
 
-    private final PromptService promptService;
+    private final ModelService modelService;
 
-    private final PromptRepository promptRepository;
+    private final ModelRepository modelRepository;
 
     private final RedisTemplate<String, String> redisTemplate;
 
     @GetMapping
-    public Page<Prompt> index(@RequestParam(defaultValue = "0") int page,
-                              @AuthenticationPrincipal User user) {
-        return promptRepository.findByUser(user,
+    public Page<Model> index(@RequestParam(defaultValue = "0") int page,
+                             @AuthenticationPrincipal User user) {
+        return modelRepository.findByUser(user,
                 PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "createdAt")));
     }
 
     @PostMapping
-    public ResponseEntity<Prompt> create(@RequestParam String text,
-                                         @AuthenticationPrincipal User user) {
-        Prompt prompt = promptService.createPrompt(text, user.getId());
-        return ResponseEntity.status(201).body(prompt);
+    public ResponseEntity<Model> create(@RequestParam String prompt,
+                                        @AuthenticationPrincipal User user) {
+        Model model = modelService.createModel(prompt, user.getId());
+        return ResponseEntity.status(201).body(model);
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<?> upload(@RequestParam("prompt_id") String promptId,
+    public ResponseEntity<?> upload(@RequestParam("model_id") String modelId,
                                     @RequestParam("file") MultipartFile file) {
         try {
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest().body("File is required");
             }
 
-            Prompt prompt = promptRepository.findById(promptId)
-                    .orElseThrow(() -> new RuntimeException("Prompt not found"));
+            Model model = modelRepository.findById(modelId)
+                    .orElseThrow(() -> new RuntimeException(MessageDefine.MODEL_NOT_FOUND.getMessage()));
 
-            String filePath = prompt.getId() + "." + getFileExtension(file);
+            String filePath = model.getId() + "." + getFileExtension(file);
             Path destination = Paths.get("uploads/text-to-3d/", filePath);
             Files.createDirectories(destination.getParent());
             file.transferTo(destination);
 
-            prompt.setModelUrl(filePath);
-            prompt.setStatus("done");
-            Prompt updatedPrompt = promptRepository.save(prompt);
+            model.setModelUrl(filePath);
+            model.setStatus(EntityStatus.DONE.getCode());
+            Model updatedModel = modelRepository.save(model);
 
-            redisTemplate.convertAndSend("job:send-prompt",
+            redisTemplate.convertAndSend("job:send-model",
                     // Using Jackson or similar JSON mapper would be better
-                    String.format("{\"id\":%d,\"userId\":%d,\"text\":\"%s\",\"status\":\"%s\",\"modelUrl\":\"%s\"}",
-                            updatedPrompt.getId(),
-                            updatedPrompt.getUser().getId(),
-                            updatedPrompt.getText(),
-                            updatedPrompt.getStatus(),
-                            updatedPrompt.getModelUrl()
+                    String.format("{\"id\":%d,\"userId\":%d,\"prompt\":\"%s\",\"status\":\"%s\",\"modelUrl\":\"%s\"}",
+                            updatedModel.getId(),
+                            updatedModel.getUser().getId(),
+                            updatedModel.getPrompt(),
+                            updatedModel.getStatus(),
+                            updatedModel.getModelUrl()
                     )
             );
 
             return ResponseEntity.ok()
-                    .body(new UploadPromptResponse("File uploaded successfully!", true));
+                    .body(new UploadModelResponse(MessageDefine.FILE_UPLOADED_SUCCESSFULLY.getMessage(), true));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(e.getMessage());
         }
     }
 
     @PostMapping("/upload-thumbnail")
-    public ResponseEntity<?> uploadThumbnail(@RequestParam("prompt_id") String promptId,
+    public ResponseEntity<?> uploadThumbnail(@RequestParam("model_id") String modelId,
                                              @RequestParam("file") MultipartFile file) {
         try {
             if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body("File is required");
+                return ResponseEntity.badRequest().body(MessageDefine.FILE_IS_REQUIRED.getMessage());
             }
 
-            Prompt prompt = promptRepository.findById(promptId)
-                    .orElseThrow(() -> new RuntimeException("Prompt not found"));
+            Model model = modelRepository.findById(modelId)
+                    .orElseThrow(() -> new RuntimeException(MessageDefine.MODEL_NOT_FOUND.getMessage()));
 
-            String filePath = prompt.getId() + "." + getFileExtension(file);
+            String filePath = model.getId() + "." + getFileExtension(file);
             Path destination = Paths.get("uploads/text-to-3d/thumbnails/", filePath);
             Files.createDirectories(destination.getParent());
             file.transferTo(destination);
 
-            prompt.setThumbnailUrl(filePath);
-            Prompt updatedPrompt = promptRepository.save(prompt);
+            model.setThumbnailUrl(filePath);
+            Model updatedModel = modelRepository.save(model);
 
-            redisTemplate.convertAndSend("job:send-prompt",
+            redisTemplate.convertAndSend("job:send-model",
                     // Using Jackson or similar JSON mapper would be better
-                    String.format("{\"id\":%d,\"userId\":%d,\"text\":\"%s\",\"status\":\"%s\",\"modelUrl\":\"%s\",\"thumbnailUrl\":\"%s\"}",
-                            updatedPrompt.getId(),
-                            updatedPrompt.getUser().getId(),
-                            updatedPrompt.getText(),
-                            updatedPrompt.getStatus(),
-                            updatedPrompt.getModelUrl(),
-                            updatedPrompt.getThumbnailUrl()
+                    String.format("{\"id\":%d,\"userId\":%d,\"prompt\":\"%s\",\"status\":\"%s\",\"modelUrl\":\"%s\",\"thumbnailUrl\":\"%s\"}",
+                            updatedModel.getId(),
+                            updatedModel.getUser().getId(),
+                            updatedModel.getPrompt(),
+                            updatedModel.getStatus(),
+                            updatedModel.getModelUrl(),
+                            updatedModel.getThumbnailUrl()
                     )
             );
 
             return ResponseEntity.ok()
-                    .body(new UploadPromptResponse("Thumbnail uploaded successfully!", true));
+                    .body(new UploadModelResponse(MessageDefine.THUMBNAIL_UPLOADED_SUCCESSFULLY.getMessage(), true));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(e.getMessage());
         }

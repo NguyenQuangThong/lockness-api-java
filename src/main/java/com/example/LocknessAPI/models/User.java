@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -15,6 +16,7 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @Document(collection = "users")
+@EnableMongoAuditing
 public class User {
 
     @Id
@@ -43,5 +45,5 @@ public class User {
     private List<Worker> workers;
 
     @DBRef
-    private List<Prompt> prompts;
+    private List<Model> models;
 }

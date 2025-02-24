@@ -20,7 +20,7 @@ public class Worker {
     @Id
     private String id = UUID.randomUUID().toString();
 
-    private String status;
+    private Byte status;
     private String token;
     private String osName;
     private String osVersion;

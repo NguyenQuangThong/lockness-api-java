@@ -1,13 +1,14 @@
-package com.example.LocknessAPI.controller;
+package com.example.LocknessAPI.controllers;
 
-import com.moonstoneid.siwe.SiweMessage;
-import com.moonstoneid.siwe.error.SiweException;
+import com.example.LocknessAPI.commons.MessageDefine;
+import com.example.LocknessAPI.dtos.requests.VerifyRequest;
+import com.example.LocknessAPI.services.AuthService;
 import jakarta.servlet.http.HttpSession;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 
@@ -16,7 +17,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/auth")
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@RequiredArgsConstructor
 public class AuthController {
+    private final AuthService authService;
 
     // **TEST DATA** EIP-4361 string
     public static final String MESSAGE = "example.com wants you to sign in with your Ethereum account:\n" +
@@ -41,64 +44,31 @@ public class AuthController {
 
     @PostMapping("/verify")
     public ResponseEntity<?> verifySignature(@RequestBody VerifyRequest request, HttpSession session) {
-        try {
-            String storedNonce = (String) session.getAttribute("nonce");
-            if (storedNonce == null) {
-                return ResponseEntity.badRequest().body("Nonce not found in session.");
-            }
-
-            // Parse SIWE message
-            SiweMessage siweMessage = new SiweMessage.Parser().parse(request.getMessage());
-
-            // Verify signature
-            siweMessage.verify(siweMessage.getDomain(), storedNonce, request.getSignature());
-
-            // Save session info
-            session.setAttribute("siwe", siweMessage.getAddress());
-            session.setAttribute("chainId", siweMessage.getChainId());
-            session.setAttribute("nonce", null); // Xóa nonce sau khi xác thực
-
-            return ResponseEntity.ok("Signature verified successfully.");
-
-        } catch (SiweException e) {
-            return ResponseEntity.status(401).body("Invalid signature: " + e.getMessage());
+        short code = authService.verifySignature(request, session);
+        if (code == MessageDefine.NONCE_NOT_FOUND_IN_SESSION.getCode()) {
+            return ResponseEntity.badRequest().body(MessageDefine.NONCE_NOT_FOUND_IN_SESSION.getMessage());
         }
+
+        if (code == MessageDefine.INVALID_SIGNATURE.getCode()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED.value()).body(MessageDefine.INVALID_SIGNATURE.getMessage());
+        }
+
+        return ResponseEntity.ok(MessageDefine.SIGNATURE_VERIFIED_SUCCESSFULLY.getMessage());
     }
 
     @GetMapping("/session")
     public ResponseEntity<?> getSession(HttpSession session) {
         String address = (String) session.getAttribute("siwe");
         if (address == null) {
-            return ResponseEntity.status(401).body("No active session.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED.value()).body(MessageDefine.NO_ACTIVE_SESSION.getMessage());
         }
         return ResponseEntity.ok("Authenticated address: " + address);
-    }
-
-    static class VerifyRequest {
-        private String message;
-        private String signature;
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
-
-        public String getSignature() {
-            return signature;
-        }
-
-        public void setSignature(String signature) {
-            this.signature = signature;
-        }
     }
 
     // Đăng xuất (xóa session)
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpSession session) {
         session.invalidate();
-        return ResponseEntity.ok("Logged out successfully");
+        return ResponseEntity.ok(MessageDefine.LOGGED_OUT_SUCCESSFULLY.getMessage());
     }
 }
